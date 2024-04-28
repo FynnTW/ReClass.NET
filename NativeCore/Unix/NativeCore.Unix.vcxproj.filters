@@ -115,5 +115,6 @@
     <ClInclude Include="..\Dependencies\distorm\src\x86defs.h">
       <Filter>Dependencies\distorm</Filter>
     </ClInclude>
+    <ClInclude Include="..\Dependencies\distorm\src\wstring.h" />
   </ItemGroup>
 </Project>

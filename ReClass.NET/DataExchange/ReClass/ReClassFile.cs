@@ -163,6 +163,7 @@ namespace ReClassNET.DataExchange.ReClass
 				}
 
 				node.Name = element.Attribute("Name")?.Value ?? string.Empty;
+				Console.WriteLine(node.Name);
 				node.Comment = element.Attribute("Comment")?.Value ?? string.Empty;
 				node.IsHidden = element.Attribute("bHidden")?.Value.Equals("1") ?? false;
 
@@ -182,7 +183,7 @@ namespace ReClassNET.DataExchange.ReClass
 				// ClassInstanceNode, ClassPointerNode, ClassInstanceArrayNode, ClassPointerArrayNode
 				if (node is BaseWrapperNode baseWrapperNode)
 				{
-					string reference;
+					string reference = null;
 					int arrayCount = 0;
 					if (node is BaseClassArrayNode) // ClassInstanceArrayNode, ClassPointerArrayNode
 					{
@@ -197,40 +198,82 @@ namespace ReClassNET.DataExchange.ReClass
 							TryGetAttributeValue(element, "Count", out arrayCount, logger);
 						}
 					}
+					else if(node is ArrayNode arraynode_)
+					{
+						var nodeType2 = typeof(Int32Node);
+						if (int.TryParse(element.Element("Array")?.Attribute("Type")?.Value, out var typeVal2))
+						{
+							if (typeVal2 >= 0 && typeVal2 < typeMap.Length)
+							{
+								nodeType2 = typeMap[typeVal2];
+							}
+						}
+						arraynode_.ChangeInnerNode(BaseNode.CreateInstanceFromType(nodeType2, false));
+						TryGetAttributeValue(element, "Count", out var num, logger);
+						arraynode_.Count = num;
+					}
+					else if (node is PointerNode ptr)
+					{
+						var nodeType2 = typeof(Int32Node);
+						if (int.TryParse(element.Attribute("Pointer")?.Value, out var typeVal2))
+						{
+							if (typeVal2 >= 0 && typeVal2 < typeMap.Length)
+							{
+								nodeType2 = typeMap[typeVal2];
+							}
+						}
+						ptr.ChangeInnerNode(BaseNode.CreateInstanceFromType(nodeType2, false));
+					}
 					else // ClassInstanceNode, ClassPointerNode
 					{
 						reference = element.Attribute("Pointer")?.Value ?? element.Attribute("Instance")?.Value;
 					}
-
-					if (reference == null || !classes.ContainsKey(reference))
+					if (node is not ArrayNode && node is not PointerNode)
 					{
-						logger.Log(LogLevel.Error, $"Skipping node with unknown reference: {reference}");
-						logger.Log(LogLevel.Warning, element.ToString());
 
-						continue;
+						if (node is not ArrayNode && node is not PointerNode && (reference == null || !classes.ContainsKey(reference)))
+						{
+							if (node is ClassPointerNode ptr)
+							{
+								node = BaseNode.CreateInstanceFromType(typeof(PointerNode), false);
+								if (node is PointerNode ptr2)
+								{
+									ptr2.ChangeInnerNode(BaseNode.CreateInstanceFromType(typeof(Int32Node), false));
+									yield return node;
+									continue;
+								}
+							}
+							else
+							{
+								logger.Log(LogLevel.Error, $"Skipping node with unknown reference: {reference}");
+								logger.Log(LogLevel.Warning, element.ToString());
+
+								continue;
+							}
+						}
+						var innerClassNode = classes[reference];
+						//if (baseWrapperNode.ShouldPerformCycleCheckForInnerNode() && !ClassUtil.IsCyclicIfClassIsAccessibleFromParent(parent, innerClassNode, project.Classes))
+						//{
+						//	logger.Log(LogLevel.Error, $"Skipping node with cycle reference: {parent.Name}->{node.Name}");
+//
+						//	continue;
+						//}
+
+						// ClassPointerNode, ClassInstanceArrayNode and ClassPointerArrayNode need to be converted to supported nodes.
+						if (node is BaseClassArrayNode classArrayNode) // ClassInstanceArrayNode, ClassPointerArrayNode
+						{
+							node = classArrayNode.GetEquivalentNode(arrayCount, innerClassNode);
+						}
+						else if (node is ClassPointerNode classPointerNode) // ClassPointerNode
+						{
+							node = classPointerNode.GetEquivalentNode(innerClassNode);
+						}
+						else // ClassInstanceNode, ClassPointerNode
+						{
+							baseWrapperNode.ChangeInnerNode(innerClassNode);
+						}
 					}
 
-					var innerClassNode = classes[reference];
-					if (baseWrapperNode.ShouldPerformCycleCheckForInnerNode() && !ClassUtil.IsCyclicIfClassIsAccessibleFromParent(parent, innerClassNode, project.Classes))
-					{
-						logger.Log(LogLevel.Error, $"Skipping node with cycle reference: {parent.Name}->{node.Name}");
-
-						continue;
-					}
-
-					// ClassPointerNode, ClassInstanceArrayNode and ClassPointerArrayNode need to be converted to supported nodes.
-					if (node is BaseClassArrayNode classArrayNode) // ClassInstanceArrayNode, ClassPointerArrayNode
-					{
-						node = classArrayNode.GetEquivalentNode(arrayCount, innerClassNode);
-					}
-					else if (node is ClassPointerNode classPointerNode) // ClassPointerNode
-					{
-						node = classPointerNode.GetEquivalentNode(innerClassNode);
-					}
-					else // ClassInstanceNode, ClassPointerNode
-					{
-						baseWrapperNode.ChangeInnerNode(innerClassNode);
-					}
 				}
 
 				switch (node)
@@ -318,40 +361,40 @@ namespace ReClassNET.DataExchange.ReClass
 
 		private static readonly Type[] typeMap2016 =
 		{
-			null,
-			typeof(ClassInstanceNode),
-			null,
-			null,
-			typeof(Hex32Node),
-			typeof(Hex64Node),
-			typeof(Hex16Node),
-			typeof(Hex8Node),
-			typeof(ClassPointerNode),
-			typeof(Int64Node),
-			typeof(Int32Node),
-			typeof(Int16Node),
-			typeof(Int8Node),
-			typeof(FloatNode),
-			typeof(DoubleNode),
-			typeof(UInt32Node),
-			typeof(UInt16Node),
-			typeof(UInt8Node),
-			typeof(Utf8TextNode),
-			typeof(Utf16TextNode),
-			typeof(FunctionPtrNode),
-			typeof(CustomNode),
-			typeof(Vector2Node),
-			typeof(Vector3Node),
-			typeof(Vector4Node),
-			typeof(Matrix4x4Node),
-			typeof(VirtualMethodTableNode),
-			typeof(ClassInstanceArrayNode),
-			null,
-			typeof(Utf8TextPtrNode),
-			typeof(Utf16TextPtrNode),
-			typeof(BitFieldNode),
-			typeof(UInt64Node),
-			typeof(FunctionNode)
+			null, //0
+			typeof(ClassInstanceNode), //1
+			null, //2
+			typeof(PointerNode), //3
+			typeof(Hex32Node), //4
+			typeof(Hex64Node), //5
+			typeof(Hex16Node), //6
+			typeof(Hex8Node), //7
+			typeof(ClassPointerNode), //8
+			typeof(Int64Node), //9
+			typeof(Int32Node), //10
+			typeof(Int16Node), //11
+			typeof(Int8Node), //12
+			typeof(FloatNode), //13
+			typeof(DoubleNode), //14
+			typeof(UInt32Node), //15
+			typeof(UInt16Node), //16
+			typeof(UInt8Node), //17
+			typeof(Utf8TextNode), //18
+			typeof(Utf16TextNode), //19
+			typeof(FunctionPtrNode), //20
+			typeof(CustomNode), //21
+			typeof(Vector2Node), //22
+			typeof(Vector3Node), 	//23
+			typeof(Vector4Node), 			//24
+			typeof(Matrix4x4Node), //25
+			typeof(VirtualMethodTableNode), //26
+			typeof(ClassInstanceArrayNode), 			//27
+			typeof(ArrayNode), //28
+			typeof(Utf8TextPtrNode), //29
+			typeof(Utf16TextPtrNode), 			//30
+			typeof(BitFieldNode), //31
+			typeof(UInt64Node), //32
+			typeof(FunctionNode) //33
 		};
 
 		#endregion

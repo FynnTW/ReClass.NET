@@ -76,8 +76,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <TargetName>NativeCore</TargetName>
     <TargetExt>.so</TargetExt>
-    <OutDir>$(SolutionDir)bin\$(Configuration)\$(PlatformTarget)\</OutDir>
-    <IntDir>$(SolutionDir)obj\$(Configuration)\$(PlatformTarget)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>.</OutDir>
+    <IntDir>.</IntDir>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="..\Dependencies\distorm\src\decoder.c" />

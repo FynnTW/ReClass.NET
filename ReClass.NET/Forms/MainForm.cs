@@ -11,8 +11,10 @@ using ReClassNET.AddressParser;
 using ReClassNET.CodeGenerator;
 using ReClassNET.Controls;
 using ReClassNET.Core;
+using ReClassNET.DataExchange.IDA;
 using ReClassNET.DataExchange.ReClass;
 using ReClassNET.Extensions;
+using ReClassNET.Logger;
 using ReClassNET.Memory;
 using ReClassNET.MemoryScanner;
 using ReClassNET.MemoryScanner.Comparer;
@@ -123,7 +125,7 @@ namespace ReClassNET.Forms
 					Program.Logger.Log(ex);
 				}
 			}
-			
+
 			if (createDefaultProject)
 			{
 				SetProject(new ReClassNetProject());
@@ -272,6 +274,40 @@ namespace ReClassNET.Forms
 				{
 					projectView.SelectedClass = selectedClassNode;
 				}
+			}
+		}
+
+		private void cloneClassMenuItem_Click(object sender, EventArgs e)
+		{
+			using var csf = new ClassSelectionForm(currentProject.Classes.OrderBy(c => c.Name));
+
+			if (csf.ShowDialog() == DialogResult.OK)
+			{
+				var selectedClassNode = csf.SelectedClass;
+				if (selectedClassNode != null)
+				{
+					var selectedNodes = selectedClassNode.Nodes;
+
+					var newClassNode = ClassNode.Create();
+					selectedNodes.ForEach(newClassNode.AddNode);
+					projectView.SelectedClass = newClassNode;
+				}
+			}
+		}
+
+		private void importClassMenuItem_Click(object sender, EventArgs e)
+		{
+			try
+			{
+				var path = ShowOpenCppFileDialog();
+				if (path != null)
+				{
+					CppClassImporter.Load(path, new NullLogger());
+				}
+			}
+			catch (Exception ex)
+			{
+				Program.Logger.Log(ex);
 			}
 		}
 
@@ -635,25 +671,25 @@ namespace ReClassNET.Forms
 					comparer = new LongMemoryComparer(ScanCompareType.Equal, (long)node.ReadValueFromMemory(selectedNode.Memory), 0L, bitConverter);
 					break;
 				case NIntNode node:
-				{
-					var value = node.ReadValueFromMemory(selectedNode.Memory);
+					{
+						var value = node.ReadValueFromMemory(selectedNode.Memory);
 #if RECLASSNET64
 					comparer = new LongMemoryComparer(ScanCompareType.Equal, value.ToInt64(), 0L, bitConverter);
 #else
-					comparer = new IntegerMemoryComparer(ScanCompareType.Equal, value.ToInt32(), 0, bitConverter);
+						comparer = new IntegerMemoryComparer(ScanCompareType.Equal, value.ToInt32(), 0, bitConverter);
 #endif
-					break;
-				}
+						break;
+					}
 				case NUIntNode node:
-				{
-					var value = node.ReadValueFromMemory(selectedNode.Memory);
+					{
+						var value = node.ReadValueFromMemory(selectedNode.Memory);
 #if RECLASSNET64
 					comparer = new LongMemoryComparer(ScanCompareType.Equal, (long)value.ToUInt64(), 0L, bitConverter);
 #else
-					comparer = new IntegerMemoryComparer(ScanCompareType.Equal, (int)value.ToUInt32(), 0, bitConverter);
+						comparer = new IntegerMemoryComparer(ScanCompareType.Equal, (int)value.ToUInt32(), 0, bitConverter);
 #endif
-					break;
-				}
+						break;
+					}
 				case Utf8TextNode node:
 					comparer = new StringMemoryComparer(node.ReadValueFromMemory(selectedNode.Memory), Encoding.UTF8, true);
 					break;
@@ -746,7 +782,7 @@ namespace ReClassNET.Forms
 			}
 		}
 
-#endregion
+		#endregion
 
 		private void MainForm_DragEnter(object sender, DragEventArgs e)
 		{

@@ -206,6 +206,13 @@ namespace ReClassNET.Forms
 
 			return null;
 		}
+		public static string ShowOpenCppFileDialog()
+		{
+			using var ofd = new OpenFileDialog();
+			ofd.CheckFileExists = true;
+			ofd.Filter = $@"Cpp files |*.cpp;*.h";
+			return ofd.ShowDialog() == DialogResult.OK ? ofd.FileName : null;
+		}
 
 		/// <summary>Loads the file as a new project.</summary>
 		/// <param name="path">Full pathname of the file.</param>
@@ -285,6 +292,7 @@ namespace ReClassNET.Forms
 			Contract.Requires(type != null);
 			Contract.Requires(type.IsSubclassOf(typeof(BaseNode)));
 
+
 			var selectedNodes = memoryViewControl.GetSelectedNodes();
 
 			var newSelected = new List<MemoryViewControl.SelectedNodeInfo>(selectedNodes.Count);
@@ -299,6 +307,40 @@ namespace ReClassNET.Forms
 						.GroupWhile((s1, s2) => s1.Node.Offset + s1.Node.MemorySize == s2.Node.Offset)
 				});
 
+			BaseNode innerType = null;
+			if (type == typeof(PointerNode))
+			{
+				var noneClass = new ClassNode(false)
+				{
+					Name = "None"
+				};
+
+				var baseTypes = new ClassNode(false)
+				{
+					Name = @"Base type..."
+				};
+
+				using var csf = new ClassSelectionForm(currentProject.Classes.OrderBy(c => c.Name).Prepend(noneClass).Prepend(baseTypes));
+
+				if (csf.ShowDialog() == DialogResult.OK && csf.SelectedClass != noneClass)
+				{
+					if (csf.SelectedClass == baseTypes)
+					{
+						using var baseTypeForm = new TypeSelectionForm();
+						if (baseTypeForm.ShowDialog() == DialogResult.OK)
+						{
+							innerType = baseTypeForm.SelectedType;
+						}
+					}
+					else
+					{
+						innerType = csf.SelectedClass;
+					}
+				}
+
+			}
+
+
 			foreach (var containerPartitions in hotSpotPartitions)
 			{
 				containerPartitions.Container.BeginUpdate();
@@ -310,10 +352,26 @@ namespace ReClassNET.Forms
 					{
 						var selected = hotSpotsToReplace.Dequeue();
 
-						var node = BaseNode.CreateInstanceFromType(type);
+						var node = BaseNode.CreateInstanceFromType(type, innerType == null);
 
 						var createdNodes = new List<BaseNode>();
 						containerPartitions.Container.ReplaceChildNode(selected.Node, node, ref createdNodes);
+
+						if (innerType != null)
+						{
+							if (innerType is ClassNode)
+							{
+								var classInstanceNode = (ClassInstanceNode)BaseNode.CreateInstanceFromType(typeof(ClassInstanceNode), false);
+								classInstanceNode.ChangeInnerNode(innerType);
+								var rootWrapperNode = node.GetRootWrapperNode();
+								rootWrapperNode.ChangeInnerNode(classInstanceNode);
+							}
+							else
+							{
+								var rootWrapperNode = node.GetRootWrapperNode();
+								rootWrapperNode.ChangeInnerNode(innerType);
+							}
+						}
 
 						node.IsSelected = true;
 

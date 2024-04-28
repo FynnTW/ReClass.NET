@@ -9,13 +9,13 @@ namespace ReClassNET.Project
 
 		public string TypeInt8 { get; set; } = "int8_t";
 		public string TypeInt16 { get; set; } = "int16_t";
-		public string TypeInt32 { get; set; } = "int32_t";
+		public string TypeInt32 { get; set; } = "int";
 		public string TypeInt64 { get; set; } = "int64_t";
 		public string TypeNInt { get; set; } = "ptrdiff_t";
 
 		public string TypeUInt8 { get; set; } = "uint8_t";
 		public string TypeUInt16 { get; set; } = "uint16_t";
-		public string TypeUInt32 { get; set; } = "uint32_t";
+		public string TypeUInt32 { get; set; } = "DWORD";
 		public string TypeUInt64 { get; set; } = "uint64_t";
 		public string TypeNUInt { get; set; } = "size_t";
 

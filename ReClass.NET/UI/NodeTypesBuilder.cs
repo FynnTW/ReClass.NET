@@ -29,6 +29,24 @@ namespace ReClassNET.UI
 			defaultNodeTypeGroupList.Add(new[] { typeof(VirtualMethodTableNode), typeof(FunctionNode), typeof(FunctionPtrNode) });
 		}
 
+		public static List<Type[]> GetNodeTypes()
+		{
+			return defaultNodeTypeGroupList;
+		}
+
+		public static List<BaseNode> GetNodes()
+		{
+			var nodes = (
+				from nodeTypeGroup in defaultNodeTypeGroupList
+				from nodeType in nodeTypeGroup
+				select BaseNode.CreateInstanceFromType(nodeType, false)).ToList();
+			foreach (var node in nodes)
+			{
+				node.Name = node.GetType().Name;
+			}
+			return nodes;
+		}
+
 		public static void AddPluginNodeGroup(Plugin plugin, IReadOnlyList<Type> nodeTypes)
 		{
 			Contract.Requires(plugin != null);
